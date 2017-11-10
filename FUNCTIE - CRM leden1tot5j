@@ -1,0 +1,43 @@
+-- Function: _crm_leden1tot5j(text, date)
+
+-- DROP FUNCTION _crm_leden1tot5j(text, date);
+
+CREATE OR REPLACE FUNCTION _crm_leden1tot5j(
+    IN lidnummer text,
+    IN begindatum date,
+    OUT id integer,
+    OUT lidmaatschap_startdatum date,
+    OUT startdatum date)
+  RETURNS SETOF record AS
+$BODY$
+BEGIN
+	RETURN QUERY 
+	SELECT partner, max_date_from, begindatum
+	--SELECT *
+	FROM	(
+		SELECT MIN(date_to) min_date_to, MAX(date_from) max_date_from, MAX(date_to) max_date_to, date_part('year',age(MIN(date_to), MAX(date_from))) datediff, membership_nbr, partner
+		FROM	(
+			SELECT   * 
+			FROM 	(
+				SELECT ROW_NUMBER() OVER (PARTITION BY m.partner ORDER BY date_from DESC) AS r, m.partner, p.membership_nbr, m.date_from, m.date_to
+				FROM membership_membership_line m
+					JOIN res_partner p ON m.partner = p.id
+				WHERE m.state IN ('paid','invoiced') --AND NOT(p.membership_state = 'wait_member')
+				) x
+			WHERE
+			  x.r <= 2
+			) y
+		GROUP BY partner, membership_nbr
+		) z
+	WHERE 	datediff BETWEEN -5 AND -1
+		--AND max_date_from >= '2015-01-01'
+		AND max_date_from >= begindatum;
+
+	 
+END; 
+$BODY$
+  LANGUAGE plpgsql VOLATILE
+  COST 100
+  ROWS 1000;
+ALTER FUNCTION _crm_leden1tot5j(text, date)
+  OWNER TO odbcreadonly;
