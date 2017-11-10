@@ -1,0 +1,22 @@
+-- Function: _crm_opzegdatum_membership(integer)
+
+-- DROP FUNCTION _crm_opzegdatum_membership(integer);
+
+CREATE OR REPLACE FUNCTION _crm_opzegdatum_membership(partner_id integer)
+  RETURNS date AS
+$BODY$
+  DECLARE cancel_date DATE;
+
+BEGIN
+	SELECT ml.date_cancel INTO cancel_date
+	FROM membership_membership_line ml
+	WHERE ml.partner = partner_id AND COALESCE(ml.date_cancel,'1999-01-01') <> '1999-01-01'
+	;
+	RETURN cancel_date;	 
+END; 
+
+$BODY$
+  LANGUAGE plpgsql VOLATILE
+  COST 100;
+ALTER FUNCTION _crm_opzegdatum_membership(integer)
+  OWNER TO odbcreadonly;
