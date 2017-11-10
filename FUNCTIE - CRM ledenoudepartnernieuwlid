@@ -1,0 +1,43 @@
+-- Function: _crm_ledenoudepartnernieuwlid(text, date)
+
+-- DROP FUNCTION _crm_ledenoudepartnernieuwlid(text, date);
+
+CREATE OR REPLACE FUNCTION _crm_ledenoudepartnernieuwlid(
+    IN lidnummer text,
+    IN begindatum date,
+    OUT id integer,
+    OUT create_date date,
+    OUT lidmaatschap_startdatum date,
+    OUT r bigint)
+  RETURNS SETOF record AS
+$BODY$
+BEGIN
+	RETURN QUERY
+	SELECT ml.partner id, p.create_date::date create_date, ml.date_from, SQ2.r_max r
+	FROM res_partner p
+		JOIN membership_membership_line ml ON p.id = ml.partner
+		-------------------------------------------
+		-- SQ2: MAX(r) voor total_rows() te krijgen
+		-------------------------------------------
+		JOIN	(SELECT SQ1.partner, MAX(r_) r_max
+			FROM (
+				---------------------------------------------------------------------
+				-- SQ1: r (row_number) toewijzen aan elke membership_line per partner
+				---------------------------------------------------------------------
+				SELECT ml.partner, ROW_NUMBER() OVER (PARTITION BY ml.partner ORDER BY ml.id DESC) AS r_	
+				FROM membership_membership_line ml --WHERE ml.partner = 45154
+				--------------------------------------------------------------- SQ1 -
+				) SQ1
+			GROUP BY SQ1.partner) SQ2
+		------------------------------------- SQ2 -
+		ON p.id = SQ2.partner
+	WHERE p.membership_nbr < lidnummer AND ml.date_from >= begindatum
+		AND SQ2.r_max = 1;
+ 
+END; 
+$BODY$
+  LANGUAGE plpgsql VOLATILE
+  COST 100
+  ROWS 1000;
+ALTER FUNCTION _crm_ledenoudepartnernieuwlid(text, date)
+  OWNER TO odbcreadonly;
