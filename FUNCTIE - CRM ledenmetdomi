@@ -1,0 +1,29 @@
+-- Function: _crm_ledenmetdomi(text, date)
+
+-- DROP FUNCTION _crm_ledenmetdomi(text, date);
+
+CREATE OR REPLACE FUNCTION _crm_ledenmetdomi(
+    IN lidnummer text,
+    IN begindatum date,
+    OUT id integer,
+    OUT naam character varying,
+    OUT mandate_id integer)
+  RETURNS SETOF record AS
+$BODY$
+BEGIN
+	RETURN QUERY 
+	SELECT p.id, p.name, sm.sm_id
+	FROM res_partner p
+		INNER JOIN (SELECT pb.id pb_id, pb.partner_id pb_partner_id, sm.id sm_id, sm.state sm_state 
+				FROM res_partner_bank pb JOIN sdd_mandate sm ON sm.partner_bank_id = pb.id 
+				WHERE sm.state = 'valid') sm ON pb_partner_id = p.id
+	WHERE p.create_date::date > begindatum;
+
+	 
+END; 
+$BODY$
+  LANGUAGE plpgsql VOLATILE
+  COST 100
+  ROWS 1000;
+ALTER FUNCTION _crm_ledenmetdomi(text, date)
+  OWNER TO odbcreadonly;
