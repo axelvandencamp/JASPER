@@ -1,0 +1,26 @@
+-- Function: _crm_ru(text)
+
+-- DROP FUNCTION _crm_ru(text);
+
+CREATE OR REPLACE FUNCTION _crm_ru(
+    IN rekeninguittreksel text,
+    OUT ru character varying,
+    OUT referentie character varying,
+    OUT partner_id numeric,
+    OUT mededeling text)
+  RETURNS SETOF record AS
+$BODY$
+BEGIN
+	RETURN QUERY 
+	SELECT abs.name RU, absl.ref referentie, absl.partner_id::numeric, replace(absl.name, chr(10), ' ') Mededeling
+	FROM account_bank_statement abs LEFT OUTER JOIN account_bank_statement_line absl ON abs.id = absl.statement_id 
+	WHERE abs.name = Rekeninguittreksel
+		AND position('geschenk' in LOWER(absl.name)) > 0
+	ORDER BY abs.create_date DESC;	 
+END; 
+$BODY$
+  LANGUAGE plpgsql VOLATILE
+  COST 100
+  ROWS 1000;
+ALTER FUNCTION _crm_ru(text)
+  OWNER TO odbcreadonly;
