@@ -1,0 +1,51 @@
+-- Function: _crm_ledennieuwlatergevalideerd(text, date)
+
+-- DROP FUNCTION _crm_ledennieuwlatergevalideerd(text, date);
+
+CREATE OR REPLACE FUNCTION _crm_ledennieuwlatergevalideerd(
+    IN lidnummer text,
+    IN begindatum date,
+    OUT bs_name character varying,
+    OUT bs_state character varying,
+    OUT bs_write_date date,
+    OUT bsl_write_date date,
+    OUT id integer,
+    OUT startdatum date,
+    OUT lidnr character varying,
+    OUT bsl_write_uid integer)
+  RETURNS SETOF record AS
+$BODY$
+BEGIN
+	RETURN QUERY 
+	SELECT bs.name, bs.state, bs.write_date::date bs_date, bsl.write_date::date bsl_date, p.id, p.membership_start, p.membership_nbr, bsl.write_uid
+	FROM account_bank_statement bs 
+		JOIN account_bank_statement_line bsl ON bs.id = bsl.statement_id 
+		JOIN res_partner p ON p.id = bsl.partner_id
+		-------------------------------------------
+		-- SQ2: MAX(r) voor total_rows() te krijgen
+		-------------------------------------------
+		JOIN	(SELECT SQ1.partner, MAX(r) r_max
+		FROM (
+			---------------------------------------------------------------------
+			-- SQ1: r (row_number) toewijzen aan elke membership_line per partner
+			---------------------------------------------------------------------
+			SELECT ml.partner, ROW_NUMBER() OVER (PARTITION BY ml.partner ORDER BY ml.id DESC) AS r	
+			FROM membership_membership_line ml
+			--WHERE partner IN ('253558','264738','263275','263444','273437')
+			--------------------------------------------------------------- SQ1 -
+			) SQ1
+		GROUP BY SQ1.partner) SQ2
+		------------------------------------- SQ2 -
+		ON p.id = SQ2.partner		
+	WHERE bs.state = 'confirm' AND bs.name LIKE '%-221-%'
+		AND date_part('month',age(bsl.write_date::date, p.membership_start))::numeric < 3 
+		AND p.membership_start < begindatum AND bsl.write_date::date >= begindatum
+		AND NOT(r_max > 1);
+	 
+END; 
+$BODY$
+  LANGUAGE plpgsql VOLATILE
+  COST 100
+  ROWS 1000;
+ALTER FUNCTION _crm_ledennieuwlatergevalideerd(text, date)
+  OWNER TO odbcreadonly;
