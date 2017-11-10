@@ -1,0 +1,32 @@
+-- Function: _crm_ledenmetinactievedubbel()
+
+-- DROP FUNCTION _crm_ledenmetinactievedubbel();
+
+CREATE OR REPLACE FUNCTION _crm_ledenmetinactievedubbel(
+    OUT id integer,
+    OUT startdatum date,
+    OUT inactive_parnter_id integer,
+    OUT inactive_id integer,
+    OUT inactive_lidnummer character varying,
+    OUT inactive_startdatum date,
+    OUT inactive_einddatum date,
+    OUT active_partner_id integer,
+    OUT active_inactive_datediff numeric)
+  RETURNS SETOF record AS
+$BODY$
+BEGIN
+	RETURN QUERY
+	SELECT p2.id, p2.membership_start, p.id inactive_partner_id, p.inactive_id, p.membership_nbr, p.membership_start, p.membership_end, p.active_partner_id
+		, date_part('year',age(p2.membership_start, p.membership_end))::numeric
+	FROM res_partner p 
+		INNER JOIN res_partner p2 ON p.active_partner_id = p2.id
+	WHERE COALESCE(p.membership_nbr,'0')<>'0' AND p.active = false AND COALESCE(p.active_partner_id,0) <> 0
+		AND date_part('year',age(p2.membership_start, p.membership_end)) < 5;
+ 
+END; 
+$BODY$
+  LANGUAGE plpgsql VOLATILE
+  COST 100
+  ROWS 1000;
+ALTER FUNCTION _crm_ledenmetinactievedubbel()
+  OWNER TO odbcreadonly;
