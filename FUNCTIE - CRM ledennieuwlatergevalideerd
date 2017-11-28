@@ -11,36 +11,46 @@ CREATE OR REPLACE FUNCTION _crm_ledennieuwlatergevalideerd(
     OUT bsl_write_date date,
     OUT id integer,
     OUT startdatum date,
+    OUT date_from date,
     OUT lidnr character varying,
     OUT bsl_write_uid integer)
   RETURNS SETOF record AS
 $BODY$
 BEGIN
 	RETURN QUERY 
-	SELECT bs.name, bs.state, bs.write_date::date bs_date, bsl.write_date::date bsl_date, p.id, p.membership_start, p.membership_nbr, bsl.write_uid
-	FROM account_bank_statement bs 
-		JOIN account_bank_statement_line bsl ON bs.id = bsl.statement_id 
-		JOIN res_partner p ON p.id = bsl.partner_id
-		-------------------------------------------
+	SELECT bs.name, bs.state, bs.write_date::date bs_date, bsl.write_date::date bsl_date, p.id, p.membership_start, SQ2.date_from, p.membership_nbr, bsl.write_uid
+	FROM 	-------------------------------------------
 		-- SQ2: MAX(r) voor total_rows() te krijgen
 		-------------------------------------------
-		JOIN	(SELECT SQ1.partner, MAX(r) r_max
+		(SELECT SQ1.partner_id, MAX(SQ1.id) ml_id, MAX(SQ1.date_from) date_from, MAX(r) r_max
 		FROM (
-			---------------------------------------------------------------------
-			-- SQ1: r (row_number) toewijzen aan elke membership_line per partner
-			---------------------------------------------------------------------
-			SELECT ml.partner, ROW_NUMBER() OVER (PARTITION BY ml.partner ORDER BY ml.id DESC) AS r	
-			FROM membership_membership_line ml
-			--WHERE partner IN ('253558','264738','263275','263444','273437')
+			------------------------------------------------------------------------------------
+			-- SQ1: geldige lidmaatschapslijn selecteren op basis van factuur/boeking en product
+			------------------------------------------------------------------------------------
+			SELECT i.partner_id, ml.id, ml.date_from, pp.membership_product, i.state, /*aml.statement_id,*/ ROW_NUMBER() OVER (PARTITION BY ml.partner ORDER BY ml.id DESC) AS r	
+			--SELECT ml.id ml_id, ml.membership_id ml_membership_id, pp.id pp_id, il.id il_id, ml.account_invoice_line ml_account_invoice_line, i.id i_id, il.invoice_id il_invoice_id, am.id am_id, i.move_id i_move_id, i.state i_state--, am.id am_id, aml.move_id aml_move_id--, il.product_id il_product_id, pp.id pp_id
+			FROM membership_membership_line ml 
+				--product info
+				JOIN product_product pp ON ml.membership_id = pp.id --il.product_id = pp.id
+				--facturen info
+				JOIN account_invoice_line il ON il.id = ml.account_invoice_line
+				JOIN account_invoice i ON i.id = il.invoice_id
+				JOIN account_move am ON am.id = i.move_id
+				--JOIN account_move_line aml ON am.id = aml.move_id
+			WHERE pp.membership_product AND i.state = 'paid'
+			--AND partner IN (72067)
 			--------------------------------------------------------------- SQ1 -
 			) SQ1
-		GROUP BY SQ1.partner) SQ2
+		GROUP BY SQ1.partner_id) SQ2
 		------------------------------------- SQ2 -
-		ON p.id = SQ2.partner		
+		JOIN membership_membership_line ml ON ml.id = SQ2.ml_id	
+		JOIN res_partner p ON p.id = ml.partner
+		JOIN account_bank_statement_line bsl ON p.id = bsl.partner_id 
+		JOIN account_bank_statement bs ON bs.id = bsl.statement_id 	
 	WHERE bs.state = 'confirm' AND bs.name LIKE '%-221-%'
-		AND date_part('month',age(bsl.write_date::date, p.membership_start))::numeric < 3 
-		AND p.membership_start < begindatum AND bsl.write_date::date >= begindatum
-		AND NOT(r_max > 1);
+		AND date_part('month',age(bsl.write_date::date, SQ2.date_from))::numeric < 3 
+		AND SQ2.date_from < begindatum AND bsl.write_date::date >= begindatum;
+		--AND NOT(r_max > 1);
 	 
 END; 
 $BODY$
