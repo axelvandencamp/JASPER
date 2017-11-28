@@ -15,21 +15,26 @@ BEGIN
 	SELECT partner, max_date_from, begindatum
 	--SELECT *
 	FROM	(
-		SELECT MIN(date_to) min_date_to, MAX(date_from) max_date_from, MAX(date_to) max_date_to, date_part('year',age(MIN(date_to), MAX(date_from))) datediff, membership_nbr, partner
+		SELECT MIN(date_to) min_date_to, MAX(date_from) max_date_from, MAX(date_to) max_date_to, 
+			date_part('year',age(MIN(date_to), MAX(date_from))) datediff, 
+			date_part('month',age(MIN(date_to), MAX(date_from))) datediff_m,
+			membership_nbr, partner
 		FROM	(
 			SELECT   * 
 			FROM 	(
-				SELECT ROW_NUMBER() OVER (PARTITION BY m.partner ORDER BY date_from DESC) AS r, m.partner, p.membership_nbr, m.date_from, m.date_to
-				FROM membership_membership_line m
-					JOIN res_partner p ON m.partner = p.id
-				WHERE m.state IN ('paid','invoiced') --AND NOT(p.membership_state = 'wait_member')
+				SELECT ROW_NUMBER() OVER (PARTITION BY ml.partner ORDER BY date_from DESC) AS r, ml.partner, p.membership_nbr, ml.date_from, ml.date_to
+				FROM membership_membership_line ml
+					JOIN res_partner p ON ml.partner = p.id
+					JOIN product_product pp ON ml.membership_id = pp.id
+				WHERE ml.state IN ('paid','invoiced') AND pp.membership_product --AND NOT(p.membership_state = 'wait_member')
+					--AND p.id IN (206785,158123,162549,255904,26244,269033,237182,252889,270296)
 				) x
 			WHERE
 			  x.r <= 2
 			) y
 		GROUP BY partner, membership_nbr
 		) z
-	WHERE 	datediff BETWEEN -5 AND -1
+	WHERE 	((datediff BETWEEN -5 AND -1) OR (datediff < 1 AND datediff_m <= -9))
 		--AND max_date_from >= '2015-01-01'
 		AND max_date_from >= begindatum;
 
