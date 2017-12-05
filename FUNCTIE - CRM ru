@@ -15,7 +15,7 @@ BEGIN
 	SELECT abs.name RU, absl.ref referentie, absl.partner_id::numeric, replace(absl.name, chr(10), ' ') Mededeling
 	FROM account_bank_statement abs LEFT OUTER JOIN account_bank_statement_line absl ON abs.id = absl.statement_id 
 	WHERE abs.name = Rekeninguittreksel
-		AND position('geschenk' in LOWER(absl.name)) > 0
+		AND (position('geschenk' in LOWER(absl.name)) > 0 OR position('cadeau' in LOWER(absl.name)) > 0 OR position('kado' in LOWER(absl.name)) > 0)
 	ORDER BY abs.create_date DESC;	 
 END; 
 $BODY$
