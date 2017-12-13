@@ -29,7 +29,7 @@ BEGIN
 			) y
 		GROUP BY partner, membership_nbr
 		) z
-	WHERE 	datediff <= -5
+	WHERE 	datediff < -5
 		--AND max_date_from >= '2015-01-01'
 		AND max_date_from >= begindatum;
 
