@@ -26,6 +26,8 @@ BEGIN
 				---------------------------------------------------------------------
 				SELECT ml.partner, ROW_NUMBER() OVER (PARTITION BY ml.partner ORDER BY ml.id DESC) AS r_	
 				FROM membership_membership_line ml --WHERE ml.partner = 45154
+					JOIN product_product pp ON ml.membership_id = pp.id
+				WHERE pp.membership_product
 				--------------------------------------------------------------- SQ1 -
 				) SQ1
 			GROUP BY SQ1.partner) SQ2
