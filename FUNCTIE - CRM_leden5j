@@ -22,7 +22,8 @@ BEGIN
 				SELECT ROW_NUMBER() OVER (PARTITION BY m.partner ORDER BY date_from DESC) AS r, m.partner, p.membership_nbr, m.date_from, m.date_to
 				FROM membership_membership_line m
 					JOIN res_partner p ON m.partner = p.id
-				WHERE m.state IN ('paid','invoiced') --AND NOT(p.membership_state = 'wait_member')
+					JOIN product_product pp ON ml.membership_id = pp.id
+				WHERE m.state IN ('paid','invoiced') AND pp.membership_product--AND NOT(p.membership_state = 'wait_member')
 				) x
 			WHERE
 			  x.r <= 2
