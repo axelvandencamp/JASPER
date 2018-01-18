@@ -32,16 +32,19 @@ BEGIN
 			------------------------------------------------------------------------------------
 			SELECT i.membership_partner_id partner_id, ml.id, ml.date_from, ml.date_to, pp.membership_product, i.state, /*aml.statement_id,*/ ROW_NUMBER() OVER (PARTITION BY ml.partner ORDER BY ml.id DESC) AS r	
 			--SELECT ml.id ml_id, ml.membership_id ml_membership_id, pp.id pp_id, il.id il_id, ml.account_invoice_line ml_account_invoice_line, i.id i_id, il.invoice_id il_invoice_id, am.id am_id, i.move_id i_move_id, i.state i_state--, am.id am_id, aml.move_id aml_move_id--, il.product_id il_product_id, pp.id pp_id
-			FROM membership_membership_line ml 
-				--product info
-				JOIN product_product pp ON ml.membership_id = pp.id --il.product_id = pp.id
-				--facturen info
+			FROM membership_membership_line ml
+				--factuur info
 				JOIN account_invoice_line il ON il.id = ml.account_invoice_line
 				JOIN account_invoice i ON i.id = il.invoice_id
-				JOIN account_move am ON am.id = i.move_id
-				--JOIN account_move_line aml ON am.id = aml.move_id
-			WHERE pp.membership_product AND i.state = 'paid'
-			--AND ml.partner IN (116293,258387,298882)
+				--boeking info
+				JOIN account_move_line aml1 ON aml1.move_id = i.move_id
+				JOIN account_move_line aml2 ON aml2.reconcile_id = aml1.reconcile_id
+				--RU
+				JOIN account_bank_statement bs ON bs.id = aml2.statement_id
+				--product info
+				JOIN product_product pp ON pp.id = ml.membership_id
+			WHERE pp.membership_product  AND i.state = 'paid'
+			--AND ml.partner IN (299116)
 			--------------------------------------------------------------- SQ1 -
 			) SQ1
 		WHERE SQ1.r <= 2
@@ -53,7 +56,7 @@ BEGIN
 		JOIN account_bank_statement bs ON bs.id = bsl.statement_id 	
 	WHERE bs.state = 'confirm' AND bs.name LIKE '%-221-%'
 		AND date_part('month',age(bsl.write_date::date, SQ2.date_from))::numeric < 3 
-		AND SQ2.date_from < begindatum AND bsl.write_date::date >= begindatum
+		AND SQ2.date_from < '2017-12-01'/*begindatum*/ AND bsl.write_date::date >= '2017-12-01'
 		AND (r_max = 1 OR (r_max > 1 AND (datediff_m <= -9 OR datediff <= -1))); 
 	 
 END; 
