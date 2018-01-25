@@ -13,12 +13,13 @@ CREATE OR REPLACE FUNCTION _crm_ledennieuwlatergevalideerd(
     OUT startdatum date,
     OUT date_from date,
     OUT lidnr character varying,
-    OUT bsl_write_uid integer)
+    OUT bsl_write_uid integer,
+    OUT r_max bigint)
   RETURNS SETOF record AS
 $BODY$
 BEGIN
 	RETURN QUERY 
-	SELECT bs.name, bs.state, bs.write_date::date bs_date, bsl.write_date::date bsl_date, p.id, p.membership_start, SQ2.date_from, p.membership_nbr, bsl.write_uid
+	SELECT bs.name, bs.state, bs.write_date::date bs_date, bsl.write_date::date bsl_date, p.id, p.membership_start, SQ2.date_from, p.membership_nbr, bsl.write_uid, SQ2.r_max
 	FROM 	-------------------------------------------
 		-- SQ2: MAX(r) voor total_rows() te krijgen
 		-------------------------------------------
@@ -56,8 +57,9 @@ BEGIN
 		JOIN account_bank_statement bs ON bs.id = bsl.statement_id 	
 	WHERE bs.state = 'confirm' AND bs.name LIKE '%-221-%'
 		AND date_part('month',age(bsl.write_date::date, SQ2.date_from))::numeric < 3 
-		AND SQ2.date_from < '2017-12-01'/*begindatum*/ AND bsl.write_date::date >= '2017-12-01'
-		AND (r_max = 1 OR (r_max > 1 AND (datediff_m <= -9 OR datediff <= -1))); 
+		AND SQ2.date_from < '2017-12-01'/*begindatum*/ AND bsl.write_date::date >= begindatum
+		AND (SQ2.r_max = 1);
+		-- OR (SQ2.r_max > 1 AND (datediff_m <= -9 OR datediff <= -1))); 
 	 
 END; 
 $BODY$
