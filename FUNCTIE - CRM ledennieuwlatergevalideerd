@@ -57,7 +57,7 @@ BEGIN
 		JOIN account_bank_statement bs ON bs.id = bsl.statement_id 	
 	WHERE bs.state = 'confirm' AND bs.name LIKE '%-221-%'
 		AND date_part('month',age(bsl.write_date::date, SQ2.date_from))::numeric < 3 
-		AND SQ2.date_from < '2017-12-01'/*begindatum*/ AND bsl.write_date::date >= begindatum
+		AND SQ2.date_from < begindatum AND bsl.write_date::date >= begindatum
 		AND (SQ2.r_max = 1);
 		-- OR (SQ2.r_max > 1 AND (datediff_m <= -9 OR datediff <= -1))); 
 	 
