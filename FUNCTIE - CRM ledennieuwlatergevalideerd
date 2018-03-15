@@ -1,29 +1,29 @@
--- Function: _crm_ledennieuwlatergevalideerd(text, date)
+-- Function: _crm_ledennieuwlatergevalideerd_test(text, date)
 
 -- DROP FUNCTION _crm_ledennieuwlatergevalideerd(text, date);
 
 CREATE OR REPLACE FUNCTION _crm_ledennieuwlatergevalideerd(
     IN lidnummer text,
     IN begindatum date,
-    OUT bs_name character varying,
-    OUT bs_state character varying,
-    OUT bs_write_date date,
-    OUT bsl_write_date date,
+    OUT check_date date,
     OUT id integer,
     OUT startdatum date,
     OUT date_from date,
     OUT lidnr character varying,
-    OUT bsl_write_uid integer,
-    OUT r_max bigint)
+    OUT r_max bigint,
+    OUT datediff double precision,
+    OUT datediff_m double precision,
+    OUT test_datepart numeric)
   RETURNS SETOF record AS
 $BODY$
 BEGIN
 	RETURN QUERY 
-	SELECT bs.name, bs.state, bs.write_date::date bs_date, bsl.write_date::date bsl_date, p.id, p.membership_start, SQ2.date_from, p.membership_nbr, bsl.write_uid, SQ2.r_max
+	SELECT SQ2.check_date check_date, p.id, p.membership_start, SQ2.date_from, p.membership_nbr, SQ2.r_max, SQ2.datediff, SQ2.datediff_m
+		, date_part('month',age(SQ2.check_date::date, SQ2.date_from))::numeric test_datepart
 	FROM 	-------------------------------------------
 		-- SQ2: MAX(r) voor total_rows() te krijgen
 		-------------------------------------------
-		(SELECT SQ1.partner_id, MAX(SQ1.id) ml_id, MAX(SQ1.date_from) date_from, MIN(SQ1.date_to) date_to, 
+		(SELECT SQ1.partner_id, MAX(SQ1.id) ml_id, MAX(SQ1.date_from) date_from, MIN(SQ1.date_to) date_to, MAX(SQ1.check_date) check_date,
 			date_part('year',age(MIN(SQ1.date_to), MAX(SQ1.date_from))) datediff, 
 			date_part('month',age(MIN(SQ1.date_to), MAX(SQ1.date_from))) datediff_m,
 			MAX(r) r_max
@@ -31,35 +31,48 @@ BEGIN
 			------------------------------------------------------------------------------------
 			-- SQ1: geldige lidmaatschapslijn selecteren op basis van factuur/boeking en product
 			------------------------------------------------------------------------------------
-			SELECT i.membership_partner_id partner_id, ml.id, ml.date_from, ml.date_to, pp.membership_product, i.state, /*aml.statement_id,*/ ROW_NUMBER() OVER (PARTITION BY ml.partner ORDER BY ml.id DESC) AS r	
-			--SELECT ml.id ml_id, ml.membership_id ml_membership_id, pp.id pp_id, il.id il_id, ml.account_invoice_line ml_account_invoice_line, i.id i_id, il.invoice_id il_invoice_id, am.id am_id, i.move_id i_move_id, i.state i_state--, am.id am_id, aml.move_id aml_move_id--, il.product_id il_product_id, pp.id pp_id
+			SELECT i.membership_partner_id partner_id, ml.id, ml.date_from, ml.date_to, pp.membership_product, i.state, 
+				bs.name, bs.state, COALESCE(bsl.write_date::date,aml2.last_rec_date) check_date, 
+				CASE
+					WHEN (COALESCE(i.partner_id,0) <> 0 AND COALESCE(a3.organisation_type_id,0) = 1 ) THEN 1
+					ELSE 0
+				END via_afd,
+				ROW_NUMBER() OVER (PARTITION BY ml.partner ORDER BY ml.id ASC) AS r
+			--SELECT il.id, ml.account_invoice_line, i.id, il.invoice_id, aml1.move_id, i.move_id, aml2.reconcile_id, aml1.reconcile_id, bs.id, aml2.statement_id, pp.id, ml.membership_id, ml2.r
 			FROM membership_membership_line ml
+				--JOIN (SELECT ROW_NUMBER() OVER (PARTITION BY ml.partner ORDER BY ml.id DESC) AS r, ml.partner FROM membership_membership_line ml JOIN product_product pp ON pp.id = ml.membership_id WHERE pp.membership_product) ml2 ON ml2.partner = ml.partner 
 				--factuur info
 				JOIN account_invoice_line il ON il.id = ml.account_invoice_line
 				JOIN account_invoice i ON i.id = il.invoice_id
+				--parnter info
+				LEFT OUTER JOIN res_partner a3 ON i.partner_id = a3.id
 				--boeking info
 				JOIN account_move_line aml1 ON aml1.move_id = i.move_id
-				JOIN account_move_line aml2 ON aml2.reconcile_id = aml1.reconcile_id
+				JOIN account_move_line aml2 ON aml2.reconcile_id = aml1.reconcile_id AND aml2.id <> aml1.id
 				--RU
-				JOIN account_bank_statement bs ON bs.id = aml2.statement_id
+				LEFT OUTER JOIN account_bank_statement bs ON bs.id = aml2.statement_id AND (bs.state = 'confirm' AND (bs.name LIKE '%-221-%' OR bs.name LIKE '%-029-%'))
+				LEFT OUTER JOIN account_bank_statement_line bsl ON bs.id = bsl.statement_id AND bsl.partner_id = ml.partner
 				--product info
 				JOIN product_product pp ON pp.id = ml.membership_id
+				--mandaat info
+				LEFT OUTER JOIN (SELECT pb.id pb_id, pb.partner_id pb_partner_id, sm.id sm_id, sm.state sm_state FROM res_partner_bank pb JOIN sdd_mandate sm ON sm.partner_bank_id = pb.id WHERE sm.state = 'valid') sm ON pb_partner_id = ml.partner
 			WHERE pp.membership_product  AND i.state = 'paid'
-			--AND ml.partner IN (299116)
+				--AND COALESCE(sm.pb_partner_id,0) = 0
+				--AND NOT(COALESCE(i.partner_id,0) <> 0 AND COALESCE(a3.organisation_type_id,0) = 1 )
+			--AND ml.partner IN (274262)
+			ORDER BY ml.id DESC
 			--------------------------------------------------------------- SQ1 -
 			) SQ1
-		WHERE SQ1.r <= 2
-		GROUP BY SQ1.partner_id) SQ2
+		--WHERE SQ1.r <= 2
+		GROUP BY SQ1.partner_id 
+		LIMIT 2) SQ2
 		------------------------------------- SQ2 -
 		JOIN membership_membership_line ml ON ml.id = SQ2.ml_id	
 		JOIN res_partner p ON p.id = ml.partner
-		JOIN account_bank_statement_line bsl ON p.id = bsl.partner_id 
-		JOIN account_bank_statement bs ON bs.id = bsl.statement_id 	
-	WHERE bs.state = 'confirm' AND bs.name LIKE '%-221-%'
-		AND date_part('month',age(bsl.write_date::date, SQ2.date_from))::numeric < 3 
-		AND SQ2.date_from < begindatum AND bsl.write_date::date >= begindatum
-		AND (SQ2.r_max = 1);
-		-- OR (SQ2.r_max > 1 AND (datediff_m <= -9 OR datediff <= -1))); 
+	WHERE date_part('month',age(SQ2.check_date::date, SQ2.date_from))::numeric < 3
+		AND SQ2.date_from < begindatum AND SQ2.check_date >= begindatum
+		AND ((SQ2.r_max = 1));
+			--OR ((SQ2.r_max > 1) AND (SQ2.datediff_m <= -9 OR SQ2.datediff <= -1)));
 	 
 END; 
 $BODY$
