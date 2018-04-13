@@ -1,4 +1,4 @@
--- Function: _crm_ledennieuwlatergevalideerd_test(text, date)
+-- Function: _crm_ledennieuwlatergevalideerd(text, date)
 
 -- DROP FUNCTION _crm_ledennieuwlatergevalideerd(text, date);
 
@@ -59,13 +59,13 @@ BEGIN
 			WHERE pp.membership_product  AND i.state = 'paid'
 				--AND COALESCE(sm.pb_partner_id,0) = 0
 				--AND NOT(COALESCE(i.partner_id,0) <> 0 AND COALESCE(a3.organisation_type_id,0) = 1 )
-			--AND ml.partner IN (274262)
+			--AND ml.partner IN (302751)
 			ORDER BY ml.id DESC
 			--------------------------------------------------------------- SQ1 -
 			) SQ1
 		--WHERE SQ1.r <= 2
 		GROUP BY SQ1.partner_id 
-		LIMIT 2) SQ2
+		/*LIMIT 2*/) SQ2
 		------------------------------------- SQ2 -
 		JOIN membership_membership_line ml ON ml.id = SQ2.ml_id	
 		JOIN res_partner p ON p.id = ml.partner
