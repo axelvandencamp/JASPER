@@ -1,6 +1,6 @@
--- Function: _crm_ledennieuwlatergevalideerd(text, date)
+-- Function: _crm_ledennieuwlatergevalideerd_test(text, date)
 
--- DROP FUNCTION _crm_ledennieuwlatergevalideerd(text, date);
+-- DROP FUNCTION _crm_ledennieuwlatergevalideerd_test(text, date);
 
 CREATE OR REPLACE FUNCTION _crm_ledennieuwlatergevalideerd(
     IN lidnummer text,
@@ -31,7 +31,7 @@ BEGIN
 			------------------------------------------------------------------------------------
 			-- SQ1: geldige lidmaatschapslijn selecteren op basis van factuur/boeking en product
 			------------------------------------------------------------------------------------
-			SELECT i.membership_partner_id partner_id, ml.id, ml.date_from, ml.date_to, pp.membership_product, i.state, 
+			SELECT i.membership_partner_id partner_id, ml.id, ml.create_date::date date_from, ml.date_to, pp.membership_product, i.state, 
 				bs.name, bs.state, COALESCE(bsl.write_date::date,aml2.last_rec_date) check_date, 
 				CASE
 					WHEN (COALESCE(i.partner_id,0) <> 0 AND COALESCE(a3.organisation_type_id,0) = 1 ) THEN 1
@@ -59,7 +59,7 @@ BEGIN
 			WHERE pp.membership_product  AND i.state = 'paid'
 				--AND COALESCE(sm.pb_partner_id,0) = 0
 				--AND NOT(COALESCE(i.partner_id,0) <> 0 AND COALESCE(a3.organisation_type_id,0) = 1 )
-			--AND ml.partner IN (302751)
+			--AND ml.partner IN (303851)
 			ORDER BY ml.id DESC
 			--------------------------------------------------------------- SQ1 -
 			) SQ1
@@ -69,7 +69,7 @@ BEGIN
 		------------------------------------- SQ2 -
 		JOIN membership_membership_line ml ON ml.id = SQ2.ml_id	
 		JOIN res_partner p ON p.id = ml.partner
-	WHERE date_part('month',age(SQ2.check_date::date, SQ2.date_from))::numeric < 3
+	WHERE date_part('month',age(SQ2.check_date::date, SQ2.date_from::date))::numeric < 3
 		AND SQ2.date_from < begindatum AND SQ2.check_date >= begindatum
 		AND ((SQ2.r_max = 1));
 			--OR ((SQ2.r_max > 1) AND (SQ2.datediff_m <= -9 OR SQ2.datediff <= -1)));
