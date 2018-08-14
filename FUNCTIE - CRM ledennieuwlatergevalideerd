@@ -1,8 +1,8 @@
--- Function: _crm_ledennieuwlatergevalideerd(text, date)
+-- Function: public._crm_ledennieuwlatergevalideerd(text, date)
 
--- DROP FUNCTION _crm_ledennieuwlatergevalideerd(text, date);
+-- DROP FUNCTION public._crm_ledennieuwlatergevalideerd(text, date);
 
-CREATE OR REPLACE FUNCTION _crm_ledennieuwlatergevalideerd(
+CREATE OR REPLACE FUNCTION public._crm_ledennieuwlatergevalideerd(
     IN lidnummer text,
     IN begindatum date,
     OUT check_date date,
@@ -79,5 +79,5 @@ $BODY$
   LANGUAGE plpgsql VOLATILE
   COST 100
   ROWS 1000;
-ALTER FUNCTION _crm_ledennieuwlatergevalideerd(text, date)
-  OWNER TO odbcreadonly;
+ALTER FUNCTION public._crm_ledennieuwlatergevalideerd(text, date)
+  OWNER TO axelvandencamp;
