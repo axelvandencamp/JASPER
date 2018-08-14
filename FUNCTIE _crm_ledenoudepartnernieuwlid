@@ -57,7 +57,7 @@ BEGIN
 		) SQ3
 	------------------------------------- SQ3 -
 	ON p.id = SQ3.partner
-	WHERE p.membership_nbr < lidnummer AND (ml.create_date::date >= begindatum OR SQ3.check_date > begindatum)
+	WHERE p.membership_nbr < lidnummer AND (ml.create_date::date >= begindatum OR SQ3.check_date >= begindatum) AND (SQ3.check_date < now()::date)
 		AND SQ3.r_max = 1
 
 	UNION ALL
@@ -101,7 +101,7 @@ BEGIN
 				OR (COALESCE(i.sdd_mandate_id,0) = COALESCE(sm.sm_id,1) AND sm.sm_state = 'valid'))) SQ3
 	------------------------------------- SQ3 -
 	ON p.id = SQ3.partner
-	WHERE p.membership_nbr < lidnummer AND SQ3.check_date > begindatum
+	WHERE p.membership_nbr < lidnummer AND SQ3.check_date >= begindatum AND SQ3.check_date < now()::date
 		AND SQ3.r_max = 1;
  
 END; 
