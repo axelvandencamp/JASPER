@@ -1,4 +1,8 @@
-CREATE OR REPLACE FUNCTION _crm_ledenoudepartnernieuwlid(
+-- Function: public._crm_ledenoudepartnernieuwlid(text, date)
+
+-- DROP FUNCTION public._crm_ledenoudepartnernieuwlid(text, date);
+
+CREATE OR REPLACE FUNCTION public._crm_ledenoudepartnernieuwlid(
     IN lidnummer text,
     IN begindatum date,
     OUT id integer,
@@ -28,27 +32,32 @@ BEGIN
 				---------------------------------------------------------------------
 				SELECT ml.partner, ROW_NUMBER() OVER (PARTITION BY ml.partner ORDER BY ml.id ASC) AS r_, ml.id	
 				FROM membership_membership_line ml 
+				--WHERE ml.partner = 296532
+				--WHERE ml.partner = 233491
 				--------------------------------------------------------------- SQ1 -
 				) SQ1
 			GROUP BY SQ1.partner) SQ2
 			------------------------------------- SQ2 -
-		JOIN membership_membership_line ml ON SQ2.ml_id = ml.id
-		--factuur info
-		JOIN account_invoice_line il ON il.id = ml.account_invoice_line
-		JOIN account_invoice i ON i.id = il.invoice_id
-		--parnter info
-		LEFT OUTER JOIN res_partner a3 ON i.partner_id = a3.id
-		--boeking info
-		JOIN account_move_line aml1 ON aml1.move_id = i.move_id
-		JOIN account_move_line aml2 ON aml2.reconcile_id = aml1.reconcile_id AND aml2.id <> aml1.id
-		--RU
-		LEFT OUTER JOIN account_bank_statement bs ON bs.id = aml2.statement_id AND (bs.state = 'confirm' AND (bs.name LIKE '%-221-%' OR bs.name LIKE '%-029-%'))
-		LEFT OUTER JOIN account_bank_statement_line bsl ON bs.id = bsl.statement_id AND bsl.partner_id = ml.partner
-		--product info
-		JOIN product_product pp ON pp.id = ml.membership_id) SQ3
+			JOIN membership_membership_line ml ON SQ2.ml_id = ml.id
+			--factuur info
+			JOIN account_invoice_line il ON il.id = ml.account_invoice_line
+			JOIN account_invoice i ON i.id = il.invoice_id
+			--parnter info
+			LEFT OUTER JOIN res_partner a3 ON i.partner_id = a3.id
+			--boeking info
+			JOIN account_move_line aml1 ON aml1.move_id = i.move_id
+			JOIN account_move_line aml2 ON aml2.reconcile_id = aml1.reconcile_id AND aml2.id <> aml1.id
+			--RU
+			LEFT OUTER JOIN account_bank_statement bs ON bs.id = aml2.statement_id AND (bs.state = 'confirm' AND (bs.name LIKE '%-221-%' OR bs.name LIKE '%-029-%'))
+			LEFT OUTER JOIN account_bank_statement_line bsl ON bs.id = bsl.statement_id AND bsl.partner_id = ml.partner
+			--product info
+			JOIN product_product pp ON pp.id = ml.membership_id
+		WHERE COALESCE(i.sdd_mandate_id,0) = 0 --geen nieuwe leden met mandaat/domi
+		AND i.partner_id = i.membership_partner_id --geen nieuwe leden via afdeling (dan verschillen deze ID's)
+		) SQ3
 	------------------------------------- SQ3 -
 	ON p.id = SQ3.partner
-	WHERE p.membership_nbr < lidnummer AND (ml.create_date::date >= begindatum OR SQ3.check_date >= begindatum)
+	WHERE p.membership_nbr < lidnummer AND (ml.create_date::date >= begindatum OR SQ3.check_date > begindatum)
 		AND SQ3.r_max = 1
 
 	UNION ALL
@@ -69,7 +78,10 @@ BEGIN
 				-- SQ1: r (row_number) toewijzen aan elke membership_line per partner
 				---------------------------------------------------------------------
 				SELECT ml.partner, ROW_NUMBER() OVER (PARTITION BY ml.partner ORDER BY ml.id ASC) AS r_, ml.id	
-				FROM membership_membership_line ml
+				FROM membership_membership_line ml 
+				--WHERE ml.partner = 296532
+				--WHERE ml.partner = 233491
+				--WHERE ml.partner IN (305052,296532,50729)
 				--------------------------------------------------------------- SQ1 -
 				) SQ1
 			GROUP BY SQ1.partner) SQ2
@@ -89,7 +101,7 @@ BEGIN
 				OR (COALESCE(i.sdd_mandate_id,0) = COALESCE(sm.sm_id,1) AND sm.sm_state = 'valid'))) SQ3
 	------------------------------------- SQ3 -
 	ON p.id = SQ3.partner
-	WHERE p.membership_nbr < lidnummer AND SQ3.check_date >= begindatum
+	WHERE p.membership_nbr < lidnummer AND SQ3.check_date > begindatum
 		AND SQ3.r_max = 1;
  
 END; 
@@ -97,5 +109,5 @@ $BODY$
   LANGUAGE plpgsql VOLATILE
   COST 100
   ROWS 1000;
-ALTER FUNCTION _crm_ledenoudepartnernieuwlid(text, date)
-  OWNER TO odbcreadonly;
+ALTER FUNCTION public._crm_ledenoudepartnernieuwlid(text, date)
+  OWNER TO axelvandencamp;
