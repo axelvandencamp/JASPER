@@ -70,7 +70,7 @@ BEGIN
 		JOIN membership_membership_line ml ON ml.id = SQ2.ml_id	
 		JOIN res_partner p ON p.id = ml.partner
 	WHERE date_part('month',age(SQ2.check_date::date, SQ2.date_from))::numeric < 3
-		AND SQ2.date_from < begindatum AND SQ2.check_date >= begindatum AND SQ3.check_date < now()::date
+		AND SQ2.date_from < begindatum AND SQ2.check_date >= begindatum AND SQ2.check_date < now()::date
 		AND ((SQ2.r_max = 1)--);
 			OR ((SQ2.r_max > 1) AND (SQ2.datediff_m <= -9 OR SQ2.datediff <= -1)));
 	 
