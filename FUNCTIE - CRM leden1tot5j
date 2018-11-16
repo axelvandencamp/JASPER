@@ -1,8 +1,8 @@
--- Function: _crm_leden1tot5j(text, date)
+-- Function: public._crm_leden1tot5j(text, date)
 
--- DROP FUNCTION _crm_leden1tot5j(text, date);
+-- DROP FUNCTION public._crm_leden1tot5j(text, date);
 
-CREATE OR REPLACE FUNCTION _crm_leden1tot5j(
+CREATE OR REPLACE FUNCTION public._crm_leden1tot5j(
     IN lidnummer text,
     IN begindatum date,
     OUT id integer,
@@ -58,7 +58,7 @@ BEGIN
 		JOIN product_product pp ON pp.id = SQ4.membership_id
 		--mandaat info
 		LEFT OUTER JOIN (SELECT pb.id pb_id, pb.partner_id pb_partner_id, sm.id sm_id, sm.signature_date, sm.unique_mandate_reference sm_ref, sm.state sm_state FROM res_partner_bank pb JOIN sdd_mandate sm ON sm.partner_bank_id = pb.id WHERE sm.state = 'valid') sm ON pb_partner_id = SQ4.partner
-	WHERE 	((datediff BETWEEN -5 AND -1) OR (datediff > -1 AND datediff_m <= -9))
+	WHERE 	((datediff BETWEEN -5 AND -1) /*OR (datediff > -1 AND datediff_m <= -9)*/)
 		AND (max_date_from >= begindatum
 			AND COALESCE(COALESCE(bsl.write_date::date,aml2.last_rec_date),COALESCE(sm.signature_date,'1900-01-01')) >= begindatum)
 	GROUP BY partner, max_date_from, COALESCE(COALESCE(bsl.write_date::date,aml2.last_rec_date),COALESCE(sm.signature_date,'1900-01-01')), datediff, sm.sm_ref;
@@ -68,5 +68,7 @@ $BODY$
   LANGUAGE plpgsql VOLATILE
   COST 100
   ROWS 1000;
-ALTER FUNCTION _crm_leden1tot5j(text, date)
-  OWNER TO odbcreadonly;
+ALTER FUNCTION public._crm_leden1tot5j(text, date)
+  OWNER TO axelvandencamp;
+GRANT EXECUTE ON FUNCTION public._crm_leden1tot5j(text, date) TO public;
+GRANT EXECUTE ON FUNCTION public._crm_leden1tot5j(text, date) TO axelvandencamp;
