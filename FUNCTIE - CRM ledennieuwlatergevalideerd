@@ -1,6 +1,6 @@
--- Function: public._crm_ledennieuwlatergevalideerd(text, date)
+-- Function: public._crm_ledennieuwlatergevalideerd_test(text, date)
 
--- DROP FUNCTION public._crm_ledennieuwlatergevalideerd(text, date);
+-- DROP FUNCTION public._crm_ledennieuwlatergevalideerd_test(text, date);
 
 CREATE OR REPLACE FUNCTION public._crm_ledennieuwlatergevalideerd(
     IN lidnummer text,
@@ -15,8 +15,7 @@ CREATE OR REPLACE FUNCTION public._crm_ledennieuwlatergevalideerd(
     OUT datediff_m double precision,
     OUT test_datepart numeric)
   RETURNS SETOF record AS
-$BODY$
-BEGIN
+$BODY$BEGIN
 	RETURN QUERY 
 	SELECT SQ2.check_date check_date, p.id, p.membership_start, SQ2.date_from, p.membership_nbr, SQ2.r_max, SQ2.datediff, SQ2.datediff_m
 		, date_part('month',age(SQ2.check_date::date, SQ2.date_from))::numeric test_datepart
@@ -31,13 +30,13 @@ BEGIN
 			------------------------------------------------------------------------------------
 			-- SQ1: geldige lidmaatschapslijn selecteren op basis van factuur/boeking en product
 			------------------------------------------------------------------------------------
-			SELECT i.membership_partner_id partner_id, ml.id, ml.date_from, ml.date_to, pp.membership_product, i.state, 
-				bs.name, bs.state, COALESCE(bsl.write_date::date,aml2.last_rec_date) check_date, 
+			SELECT i.membership_partner_id partner_id, ml.partner, ml.id, ml.date_from, ml.date_to, pp.membership_product, i.state, 
+				bs.name, bs.state, COALESCE(bs.write_date::date,aml2.last_rec_date) check_date, bs.write_date::date,
 				CASE
-					WHEN (COALESCE(i.partner_id,0) <> 0 AND COALESCE(a3.organisation_type_id,0) = 1 ) THEN 1
+					WHEN i.partner_id <> i.membership_partner_id AND COALESCE(a3.organisation_type_id,0) IN (1,7)  THEN 1  --1 = afdeling; 7 = regionale
 					ELSE 0
 				END via_afd,
-				ROW_NUMBER() OVER (PARTITION BY ml.partner ORDER BY ml.id DESC) AS r
+				ROW_NUMBER() OVER (PARTITION BY ml.partner ORDER BY ml.id DESC) AS r--, i.partner_id, i.membership_partner_id
 			--SELECT il.id, ml.account_invoice_line, i.id, il.invoice_id, aml1.move_id, i.move_id, aml2.reconcile_id, aml1.reconcile_id, bs.id, aml2.statement_id, pp.id, ml.membership_id, ml2.r
 			FROM membership_membership_line ml
 				--JOIN (SELECT ROW_NUMBER() OVER (PARTITION BY ml.partner ORDER BY ml.id DESC) AS r, ml.partner FROM membership_membership_line ml JOIN product_product pp ON pp.id = ml.membership_id WHERE pp.membership_product) ml2 ON ml2.partner = ml.partner 
@@ -51,7 +50,7 @@ BEGIN
 				JOIN account_move_line aml2 ON aml2.reconcile_id = aml1.reconcile_id AND aml2.id <> aml1.id
 				--RU
 				LEFT OUTER JOIN account_bank_statement bs ON bs.id = aml2.statement_id AND (bs.state = 'confirm' AND (bs.name LIKE '%-221-%' OR bs.name LIKE '%-029-%'))
-				LEFT OUTER JOIN account_bank_statement_line bsl ON bs.id = bsl.statement_id AND bsl.partner_id = ml.partner
+				--LEFT OUTER JOIN account_bank_statement_line bsl ON bs.id = bsl.statement_id AND bsl.partner_id = ml.partner
 				--product info
 				JOIN product_product pp ON pp.id = ml.membership_id
 				--mandaat info
@@ -59,7 +58,7 @@ BEGIN
 			WHERE pp.membership_product  AND i.state = 'paid'
 				AND NOT(COALESCE(i.sdd_mandate_id,0) = COALESCE(sm.sm_id,1) AND sm.sm_state = 'valid')
 				--AND NOT(COALESCE(i.partner_id,0) <> 0 AND COALESCE(a3.organisation_type_id,0) = 1 )
-			--AND ml.partner IN (57738)
+			--AND ml.partner IN (312030)
 			--ORDER BY ml.id ASC
 			--------------------------------------------------------------- SQ1 -
 			) SQ1
