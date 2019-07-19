@@ -1,8 +1,8 @@
--- Function: _crm_leden5j(text, date)
+-- Function: public._crm_leden5j_test(text, date)
 
--- DROP FUNCTION _crm_leden5j(text, date);
+-- DROP FUNCTION public._crm_leden5j_test(text, date);
 
-CREATE OR REPLACE FUNCTION _crm_leden5j(
+CREATE OR REPLACE FUNCTION public._crm_leden5j(
     IN lidnummer text,
     IN begindatum date,
     OUT id integer,
@@ -26,12 +26,12 @@ BEGIN
 			FROM	(
 				SELECT   * 
 				FROM 	(
-					SELECT ROW_NUMBER() OVER (PARTITION BY ml.partner ORDER BY date_from DESC) AS r, ml.partner, p.membership_nbr, ml.date_from, ml.date_to, ml.id
+					SELECT ROW_NUMBER() OVER (PARTITION BY ml.partner ORDER BY date_from DESC) AS r, ml.partner, p.membership_nbr, ml.create_date::date date_from, ml.date_to, ml.id
 					FROM membership_membership_line ml
 						JOIN res_partner p ON ml.partner = p.id
 						JOIN product_product pp ON ml.membership_id = pp.id
-					WHERE ml.state IN ('paid','invoiced') AND pp.membership_product--AND NOT(p.membership_state = 'wait_member')
-						--AND p.id = 26543
+					WHERE ml.state IN ('paid','invoiced','canceled') AND pp.membership_product--AND NOT(p.membership_state = 'wait_member')
+						--AND p.id = 176669
 					) SQ1
 				WHERE
 				  SQ1.r <= 2
@@ -66,5 +66,7 @@ $BODY$
   LANGUAGE plpgsql VOLATILE
   COST 100
   ROWS 1000;
-ALTER FUNCTION _crm_leden5j(text, date)
-  OWNER TO odbcreadonly;
+ALTER FUNCTION public._crm_leden5j(text, date)
+  OWNER TO axelvandencamp;
+GRANT EXECUTE ON FUNCTION public._crm_leden5j(text, date) TO public;
+GRANT EXECUTE ON FUNCTION public._crm_leden5j(text, date) TO axelvandencamp;
