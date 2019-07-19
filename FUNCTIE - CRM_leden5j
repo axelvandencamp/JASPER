@@ -1,6 +1,6 @@
--- Function: public._crm_leden5j_test(text, date)
+-- Function: public._crm_leden5j(text, date)
 
--- DROP FUNCTION public._crm_leden5j_test(text, date);
+-- DROP FUNCTION public._crm_leden5j(text, date);
 
 CREATE OR REPLACE FUNCTION public._crm_leden5j(
     IN lidnummer text,
