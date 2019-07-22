@@ -22,23 +22,24 @@ BEGIN
 	FROM	(
 		SELECT SQ3.*, ml.account_invoice_line, ml.membership_id
 		FROM	(
-			SELECT MIN(date_to) min_date_to, MAX(date_from) max_date_from, MAX(date_to) max_date_to, date_part('year',age(MIN(date_to), MAX(date_from))) datediff, SQ2.membership_nbr, SQ2.partner, MAX(SQ2.id) ml_id
+			SELECT MIN(date_to) min_date_to, MAX(date_from) max_date_from, MAX(date_to) max_date_to, MAX(r) as max_r, date_part('year',age(MIN(date_to), MAX(date_from))) datediff, membership_pay_date, SQ2.membership_nbr, SQ2.partner, MAX(SQ2.id) ml_id
 			FROM	(
 				SELECT   * 
 				FROM 	(
-					SELECT ROW_NUMBER() OVER (PARTITION BY ml.partner ORDER BY date_from DESC) AS r, ml.partner, p.membership_nbr, ml.create_date::date date_from, ml.date_to, ml.id
+					SELECT ROW_NUMBER() OVER (PARTITION BY ml.partner ORDER BY date_from DESC) AS r, ml.partner, p.membership_nbr, p.membership_pay_date, ml.create_date::date date_from, ml.date_to, ml.id
 					FROM membership_membership_line ml
 						JOIN res_partner p ON ml.partner = p.id
 						JOIN product_product pp ON ml.membership_id = pp.id
 					WHERE ml.state IN ('paid','invoiced','canceled') AND pp.membership_product--AND NOT(p.membership_state = 'wait_member')
-						--AND p.id = 176669
+						--AND p.id = 175865
 					) SQ1
 				WHERE
 				  SQ1.r <= 2
 				) SQ2
-			GROUP BY partner, SQ2.membership_nbr
+			GROUP BY partner, SQ2.membership_nbr, SQ2.membership_pay_date
 			) SQ3
 			JOIN membership_membership_line ml ON ml.id = SQ3.ml_id--, SQ2.account_invoice_line, SQ2.membership_id
+		WHERE max_r > 1
 		) SQ4
 		--factuur info
 		JOIN account_invoice_line il ON il.id = SQ4.account_invoice_line
@@ -57,7 +58,7 @@ BEGIN
 		LEFT OUTER JOIN (SELECT pb.id pb_id, pb.partner_id pb_partner_id, sm.id sm_id, sm.signature_date, sm.unique_mandate_reference sm_ref, sm.state sm_state FROM res_partner_bank pb JOIN sdd_mandate sm ON sm.partner_bank_id = pb.id WHERE sm.state = 'valid') sm ON pb_partner_id = SQ4.partner
 	WHERE 	datediff < -5
 		--AND max_date_from >= '2015-01-01'
-		AND (max_date_from >= begindatum
+		AND ((max_date_from >= begindatum OR SQ4.membership_pay_date >= begindatum)
 			AND COALESCE(COALESCE(bsl.write_date::date,aml2.last_rec_date),COALESCE(sm.signature_date,'1900-01-01')) >= begindatum)
 	GROUP BY partner, max_date_from, COALESCE(COALESCE(bsl.write_date::date,aml2.last_rec_date),COALESCE(sm.signature_date,'1900-01-01')), datediff, sm.sm_ref;
 	 
