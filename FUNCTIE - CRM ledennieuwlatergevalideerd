@@ -1,6 +1,6 @@
--- Function: public._crm_ledennieuwlatergevalideerd_test(text, date)
+-- Function: public._crm_ledennieuwlatergevalideerd(text, date)
 
--- DROP FUNCTION public._crm_ledennieuwlatergevalideerd_test(text, date);
+-- DROP FUNCTION public._crm_ledennieuwlatergevalideerd(text, date);
 
 CREATE OR REPLACE FUNCTION public._crm_ledennieuwlatergevalideerd(
     IN lidnummer text,
@@ -32,10 +32,10 @@ $BODY$BEGIN
 			------------------------------------------------------------------------------------
 			SELECT i.membership_partner_id partner_id, ml.partner, ml.id, ml.date_from, ml.date_to, pp.membership_product, i.state, 
 				bs.name, bs.state, COALESCE(bs.write_date::date,aml2.last_rec_date) check_date, bs.write_date::date,
-				CASE
+				/*CASE
 					WHEN i.partner_id <> i.membership_partner_id AND COALESCE(a3.organisation_type_id,0) IN (1,7)  THEN 1  --1 = afdeling; 7 = regionale
 					ELSE 0
-				END via_afd,
+				END via_afd,*/
 				ROW_NUMBER() OVER (PARTITION BY ml.partner ORDER BY ml.id DESC) AS r--, i.partner_id, i.membership_partner_id
 			--SELECT il.id, ml.account_invoice_line, i.id, il.invoice_id, aml1.move_id, i.move_id, aml2.reconcile_id, aml1.reconcile_id, bs.id, aml2.statement_id, pp.id, ml.membership_id, ml2.r
 			FROM membership_membership_line ml
@@ -57,7 +57,7 @@ $BODY$BEGIN
 				LEFT OUTER JOIN (SELECT pb.id pb_id, pb.partner_id pb_partner_id, sm.id sm_id, sm.state sm_state FROM res_partner_bank pb JOIN sdd_mandate sm ON sm.partner_bank_id = pb.id WHERE sm.state = 'valid') sm ON pb_partner_id = ml.partner
 			WHERE pp.membership_product  AND i.state = 'paid'
 				AND NOT(COALESCE(i.sdd_mandate_id,0) = COALESCE(sm.sm_id,1) AND sm.sm_state = 'valid')
-				--AND NOT(COALESCE(i.partner_id,0) <> 0 AND COALESCE(a3.organisation_type_id,0) = 1 )
+				AND NOT( i.partner_id <> i.membership_partner_id AND COALESCE(a3.organisation_type_id,0) IN (1,7)  )
 			--AND ml.partner IN (312030)
 			--ORDER BY ml.id ASC
 			--------------------------------------------------------------- SQ1 -
@@ -80,3 +80,5 @@ $BODY$
   ROWS 1000;
 ALTER FUNCTION public._crm_ledennieuwlatergevalideerd(text, date)
   OWNER TO axelvandencamp;
+GRANT EXECUTE ON FUNCTION public._crm_ledennieuwlatergevalideerd(text, date) TO public;
+GRANT EXECUTE ON FUNCTION public._crm_ledennieuwlatergevalideerd(text, date) TO axelvandencamp;
