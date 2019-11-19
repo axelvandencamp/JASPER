@@ -1,0 +1,20 @@
+CREATE OR REPLACE FUNCTION _crm_einddatum(IN periode TEXT)
+	RETURNS date AS
+$BODY$
+BEGIN
+	RETURN
+	CASE WHEN periode = 'LFW' THEN date_trunc('week', now())::date - 1
+					WHEN periode = 'LFM' THEN  date_trunc('month', now())::date - 1 
+					WHEN periode = 'MTD' THEN now()::date -1 
+					WHEN periode = 'YTD' THEN now()::date -1 
+					WHEN periode = 'LFY' THEN date_trunc('year', now())::date - 1 
+					WHEN periode = 'Y' THEN now()::date-1 END;
+END;
+$BODY$
+  LANGUAGE plpgsql VOLATILE;
+  --COST 100
+  --ROWS 1000;
+ALTER FUNCTION public._crm_einddatum(text, date)
+  OWNER TO axelvandencamp;
+GRANT EXECUTE ON FUNCTION public._crm_einddatum(text, date) TO public;
+GRANT EXECUTE ON FUNCTION public._crm_einddatum(text, date) TO axelvandencamp;
