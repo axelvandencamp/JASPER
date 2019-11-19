@@ -1,0 +1,20 @@
+CREATE OR REPLACE FUNCTION _crm_startdatum(IN periode TEXT)
+	RETURNS date AS
+$BODY$
+BEGIN
+	RETURN
+	CASE WHEN periode = 'LFW' THEN date_trunc('week', now())::date - 7
+					WHEN periode = 'LFM' THEN  (date_trunc('month', now()) + INTERVAL '-1 MONTH')::date 
+					WHEN periode = 'MTD' THEN date_trunc('month', now())::date 
+					WHEN periode = 'YTD' THEN date_trunc('year', now())::date 
+					WHEN periode = 'LFY' THEN (date_trunc('year', now()) + INTERVAL '-1 year')::date 
+					WHEN periode = 'Y' THEN now()::date -1 END;
+END;
+$BODY$
+  LANGUAGE plpgsql VOLATILE;
+  --COST 100
+  --ROWS 1000;
+ALTER FUNCTION public._crm_leden5j(text, date)
+  OWNER TO axelvandencamp;
+GRANT EXECUTE ON FUNCTION public._crm_leden5j(text, date) TO public;
+GRANT EXECUTE ON FUNCTION public._crm_leden5j(text, date) TO axelvandencamp;
