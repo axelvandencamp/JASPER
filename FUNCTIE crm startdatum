@@ -14,7 +14,7 @@ $BODY$
   LANGUAGE plpgsql VOLATILE;
   --COST 100
   --ROWS 1000;
-ALTER FUNCTION public._crm_leden5j(text, date)
+ALTER FUNCTION public._crm_startdatum(text)
   OWNER TO axelvandencamp;
-GRANT EXECUTE ON FUNCTION public._crm_leden5j(text, date) TO public;
-GRANT EXECUTE ON FUNCTION public._crm_leden5j(text, date) TO axelvandencamp;
+GRANT EXECUTE ON FUNCTION public._crm_startdatum(text) TO public;
+GRANT EXECUTE ON FUNCTION public._crm_startdatum(text) TO axelvandencamp;
