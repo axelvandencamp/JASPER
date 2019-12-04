@@ -17,7 +17,7 @@ BEGIN
 		INNER JOIN (SELECT pb.id pb_id, pb.partner_id pb_partner_id, sm.id sm_id, sm.state sm_state 
 				FROM res_partner_bank pb JOIN sdd_mandate sm ON sm.partner_bank_id = pb.id 
 				WHERE sm.state = 'valid') sm ON pb_partner_id = p.id
-	WHERE p.create_date::date > begindatum;
+	WHERE p.create_date::date >= begindatum;
 
 	 
 END; 
@@ -25,5 +25,7 @@ $BODY$
   LANGUAGE plpgsql VOLATILE
   COST 100
   ROWS 1000;
-ALTER FUNCTION _crm_ledenmetdomi(text, date)
-  OWNER TO odbcreadonly;
+ALTER FUNCTION public._crm_ledenmetdomi(text, date)
+  OWNER TO axelvandencamp;
+GRANT EXECUTE ON FUNCTION public._crm_ledenmetdomi(text, date) TO public;
+GRANT EXECUTE ON FUNCTION public._crm_ledenmetdomi(text, date) TO axelvandencamp;
