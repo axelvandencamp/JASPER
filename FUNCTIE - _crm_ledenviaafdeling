@@ -1,8 +1,8 @@
--- Function: _crm_ledenviaafdeling(text, date)
+-- Function: public._crm_ledenviaafdeling(text, date)
 
--- DROP FUNCTION _crm_ledenviaafdeling(text, date);
+-- DROP FUNCTION public._crm_ledenviaafdeling(text, date);
 
-CREATE OR REPLACE FUNCTION _crm_ledenviaafdeling(
+CREATE OR REPLACE FUNCTION public._crm_ledenviaafdeling(
     IN lidnummer text,
     IN begindatum date,
     OUT id integer,
@@ -15,7 +15,7 @@ BEGIN
 	SELECT p.id, p.name, a5.name afdeling 
 	FROM res_partner p
 		INNER JOIN res_partner a5 ON COALESCE(p.recruiting_organisation_id,0) = a5.id
-	WHERE COALESCE(p.recruiting_organisation_id,0) > 0 AND p.create_date > begindatum;
+	WHERE COALESCE(p.recruiting_organisation_id,0) > 0 AND p.create_date >= begindatum;
 
 	 
 END; 
@@ -23,5 +23,7 @@ $BODY$
   LANGUAGE plpgsql VOLATILE
   COST 100
   ROWS 1000;
-ALTER FUNCTION _crm_ledenviaafdeling(text, date)
-  OWNER TO odbcreadonly;
+ALTER FUNCTION public._crm_ledenviaafdeling(text, date)
+  OWNER TO axelvandencamp;
+GRANT EXECUTE ON FUNCTION public._crm_ledenviaafdeling(text, date) TO public;
+GRANT EXECUTE ON FUNCTION public._crm_ledenviaafdeling(text, date) TO axelvandencamp;
