@@ -34,7 +34,7 @@ BEGIN
 						JOIN res_partner p ON ml.partner = p.id
 						JOIN product_product pp ON ml.membership_id = pp.id
 					WHERE ml.state IN ('paid','invoiced') AND pp.membership_product
-						--AND p.id = 240091
+						--AND p.id = 138299
 					) SQ1
 				WHERE
 				  SQ1.r <= 2
@@ -58,8 +58,8 @@ BEGIN
 		JOIN product_product pp ON pp.id = SQ4.membership_id
 		--mandaat info
 		LEFT OUTER JOIN (SELECT pb.id pb_id, pb.partner_id pb_partner_id, sm.id sm_id, sm.signature_date, sm.unique_mandate_reference sm_ref, sm.state sm_state FROM res_partner_bank pb JOIN sdd_mandate sm ON sm.partner_bank_id = pb.id WHERE sm.state = 'valid') sm ON pb_partner_id = SQ4.partner
-	WHERE 	((datediff BETWEEN -5 AND -1) /*OR (datediff > -1 AND datediff_m <= -9)*/)
-		AND (max_date_from >= begindatum
+	WHERE 	((datediff < -5 AND datediff >= -1) /*OR (datediff > -1 AND datediff_m <= -9)*/)
+		AND (COALESCE(COALESCE(bsl.write_date::date,aml2.last_rec_date),COALESCE(sm.signature_date,'1900-01-01')) >= begindatum
 			AND COALESCE(COALESCE(bsl.write_date::date,aml2.last_rec_date),COALESCE(sm.signature_date,'1900-01-01')) >= begindatum)
 	GROUP BY partner, max_date_from, COALESCE(COALESCE(bsl.write_date::date,aml2.last_rec_date),COALESCE(sm.signature_date,'1900-01-01')), datediff, sm.sm_ref;
 
