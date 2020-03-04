@@ -1,0 +1,14 @@
+-- DROP FUNCTION _crm_land(integer)
+
+CREATE OR REPLACE FUNCTION public._crm_land(land_code integer) RETURNS text AS $$
+SELECT it.value FROM ir_translation it WHERE it.res_id = land_code
+		AND it.name = 'res.country,name' AND it.lang = 'nl_BE';
+$$ LANGUAGE SQL;
+
+ALTER FUNCTION public._crm_land(integer)
+  OWNER TO axelvandencamp;
+GRANT EXECUTE ON FUNCTION public._crm_land(integer) TO public;
+GRANT EXECUTE ON FUNCTION public._crm_land(integer) TO axelvandencamp;
+
+COMMENT ON FUNCTION public._crm_land(integer)
+    IS 'vertaalslag [res_country].[name] naar NL';
