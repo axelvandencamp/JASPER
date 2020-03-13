@@ -1,0 +1,24 @@
+-- "SET VARIABLES": berekening werk variabelen
+-- "lijst ID's nieuwe leden": aanmaak werktabel
+--=================================================================
+--SET VARIABLES
+-- - v.startdatum = 1e dag vanaf wanneer de nieuwe leden moeten opgehaald worden
+-- - v.lidnummer = het laatste lidnummer aangemaakt de dag voor v.startdatum
+DROP TABLE IF EXISTS _AV_myvar;
+
+CREATE TEMP TABLE _AV_myvar (startdatum DATE, lidnummer TEXT, afdeling NUMERIC[]);
+
+INSERT INTO _AV_myvar VALUES('2018-04-01',	--startdatum
+				null,		--lidnummer
+				'{248599}');	--lijst afdelingen
+
+UPDATE _AV_myvar
+SET lidnummer = membership_nbr FROM (SELECT MAX(membership_nbr) membership_nbr FROM _AV_myvar v, res_partner p WHERE create_date::date = v.startdatum - (interval '1 day')) sq1;
+SELECT * FROM _AV_myvar;
+--====================================================================
+--lijst ID's nieuwe leden
+--=======================
+DROP TABLE IF EXISTS _AV_tempIDs_nieuweleden;
+
+CREATE TEMP TABLE _AV_tempIDs_nieuweleden (partner_id NUMERIC, N NUMERIC, G NUMERIC, O1 NUMERIC, "5J" NUMERIC, "1-5J" NUMERIC, V NUMERIC, O2 NUMERIC);
+--====================================================================
