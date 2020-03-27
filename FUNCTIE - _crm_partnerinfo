@@ -1,3 +1,16 @@
+-------------------------------------------------
+-- Functie levert extra info (contact + status + afdeling)
+-- - vermijdt herhalen van ophalen contact gegevens in elke query waar die nodig zijn
+-- -----------------------------------------------
+-- Functie te gebruiken als extra tabel
+-- - linken van [res_partner].[id] naar [_crm_partnerinfo()].[partner_id]
+-- voorbeeld:
+-- ----------
+-- SELECT *
+-- FROM _crm_partnerinfo() sq1
+-- WHERE sq1.partner_id IN (264752)
+----------------------------------------------------
+----------------------------------------------------
 -- Function: _crm_partnerinfo()
 
 -- DROP FUNCTION _crm_partnerinfo();
