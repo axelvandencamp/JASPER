@@ -16,6 +16,7 @@ CREATE OR REPLACE FUNCTION public._crm_nieuweleden(
     OUT tijdschrift2 character varying,
     OUT herkomst character varying,
     OUT status character varying,
+    OUT einddatum date,
     OUT productid text,
     OUT name text,
     OUT adres text,
@@ -43,7 +44,7 @@ BEGIN
 	RETURN QUERY
 
 	SELECT p.id,
-		now()::date as datum_toevoegin,
+		now()::date as datum_toevoeging,
 		CASE WHEN n."1-5J" > 0 THEN '1-5j'
 			WHEN n."5J" > 0 THEN '5j'
 			WHEN n.V > 0 THEN 'V'
@@ -63,6 +64,7 @@ BEGIN
 		COALESCE(mm2.name,'') tijdschrift_2,
 		mo.name herkomst_lidmaatschap,
 		p.membership_state huidige_lidmaatschap_status,
+		p.membership_stop einddatum,
 
 		'BUS' as productid,
 		CASE WHEN p.first_name = '' THEN p.last_name ELSE p.first_name||' '||p.last_name END "name",
@@ -238,4 +240,3 @@ ALTER FUNCTION public._crm_nieuweleden(date)
 GRANT EXECUTE ON FUNCTION public._crm_nieuweleden(date) TO public;
 GRANT EXECUTE ON FUNCTION public._crm_nieuweleden(date) TO axelvandencamp;
 GRANT EXECUTE ON FUNCTION public._crm_nieuweleden(date) TO readonly;
-
