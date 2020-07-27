@@ -44,7 +44,7 @@ BEGIN
 		JOIN res_partner p ON p.id = sq2.partner
 		JOIN _crm_partnerinfo() sq3 ON sq3.partner_id = p.id
 		JOIN res_users u ON u.id = p.create_uid
-	WHERE sq2.date_diff >= 1 --BETWEEN 1 AND 5
+	WHERE sq2.date_diff >= 5 --BETWEEN 1 AND 5
 		AND p.membership_pay_date >= '2020-07-01'
 		AND p.membership_end = '2020-12-31';
 	
