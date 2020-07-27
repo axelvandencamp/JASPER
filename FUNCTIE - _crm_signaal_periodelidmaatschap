@@ -1,0 +1,63 @@
+-- Function: public._crm_signaal_periodelidmaatschap()
+
+-- DROP FUNCTION public._crm_signaal_periodelidmaatschap();
+
+CREATE OR REPLACE FUNCTION public._crm_signaal_periodelidmaatschap(
+    OUT id integer,
+    OUT signaal text)
+  RETURNS SETOF record AS
+$BODY$
+DECLARE v_startdatum date;
+DECLARE v_einddatum date;
+DECLARE v_betaaldatum date;
+
+BEGIN
+
+	SELECT date_trunc('year', now())::date INTO v_startdatum;
+	SELECT cast(date_trunc('year', now()) + '1 year'::interval as date) - 1 INTO v_einddatum;
+	SELECT (date_trunc('year', now()) + '6 month'::interval)::date INTO v_betaaldatum;
+	-----------------------------------
+	RETURN QUERY
+
+	SELECT sq2.partner, 'periode lidmaatschap niet correct volgens startdatum lidmaatschap' /*q2.*, p.membership_pay_date, p.membership_end recentste_einddatum_lidmaatschap, 
+		CASE WHEN u.login = 'apiuser' THEN 'via website'
+			WHEN u.login IN ('axel','vera','kristienv') THEN 'ledenadministratie'
+			ELSE 'andere' END aangemaakt_door, sq3.* */
+	FROM	(
+		SELECT sq1.partner, max(sq1.id) ml_id, max(sq1.date_from) date_from_1, min(sq1.date_to) date_to_onderbreking,
+			DATE_PART('YEAR', AGE(max(sq1.date_from), min(sq1.date_to))) date_diff
+		FROM	(
+			SELECT ml.id, ml.partner, ml.date_from, ml.date_to, ml.state, pp.name_template,
+				ROW_NUMBER() OVER (PARTITION BY ml.partner ORDER BY ml.id DESC) AS r
+			FROM membership_membership_line ml
+				JOIN product_product pp ON pp.id = ml.membership_id
+			WHERE pp.membership_product
+				AND ml.state = 'paid' --AND ml.partner = 295277
+				--AND ml.date_to > '2014-12-31'
+			GROUP BY ml.partner, ml.id, ml.date_from, ml.date_to, ml.state, pp.name_template
+			ORDER BY ml.id DESC
+			) sq1
+			JOIN res_partner p ON p.id = sq1.partner
+		WHERE sq1.r <= 2
+		GROUP BY sq1.partner
+		) sq2
+		JOIN res_partner p ON p.id = sq2.partner
+		JOIN _crm_partnerinfo() sq3 ON sq3.partner_id = p.id
+		JOIN res_users u ON u.id = p.create_uid
+	WHERE sq2.date_diff >= 1 --BETWEEN 1 AND 5
+		AND p.membership_pay_date >= '2020-07-01'
+		AND p.membership_end = '2020-12-31';
+	
+	--DROP TABLE _AV_tempIDs_nieuweleden;
+	--SELECT p.id, p.membership_nbr, v_startdatum, v_lidnummer FROM res_partner p WHERE create_date::date >= v_startdatum;
+	 
+END; 
+$BODY$
+  LANGUAGE plpgsql VOLATILE
+  COST 100
+  ROWS 1000;
+ALTER FUNCTION public._crm_signaal_periodelidmaatschap()
+  OWNER TO axelvandencamp;
+GRANT EXECUTE ON FUNCTION public._crm_signaal_periodelidmaatschap() TO public;
+GRANT EXECUTE ON FUNCTION public._crm_signaal_periodelidmaatschap() TO axelvandencamp;
+GRANT EXECUTE ON FUNCTION public._crm_signaal_periodelidmaatschap() TO readonly;
