@@ -1,45 +1,32 @@
--------------------------------------------------
--- Functie levert extra info (contact + status + afdeling)
--- - vermijdt herhalen van ophalen contact gegevens in elke query waar die nodig zijn
--- -----------------------------------------------
--- Functie te gebruiken als extra tabel
--- - linken van [res_partner].[id] naar [_crm_partnerinfo()].[partner_id]
--- voorbeeld:
--- ----------
--- SELECT *
--- FROM _crm_partnerinfo() sq1
--- WHERE sq1.partner_id IN (264752)
-----------------------------------------------------
-----------------------------------------------------
--- Function: _crm_partnerinfo()
+-- Function: public._crm_partnerinfo()
 
--- DROP FUNCTION _crm_partnerinfo();
+-- DROP FUNCTION public._crm_partnerinfo();
 
-CREATE OR REPLACE FUNCTION _crm_partnerinfo(
-    OUT partner_id integer, 
-	OUT lidnummer character varying, 
-	OUT geslacht character varying,
-	OUT voornaam character varying,
-	OUT achternaam character varying,
-	OUT voornaam_lidkaart character varying,
-	OUT achternaam_lidkaart character varying,
-	OUT birthday date,
-	OUT leeftijd double precision,
-	OUT building character varying,
-	OUT straat character varying,
-	OUT huisnummer character varying, 
-	OUT bus character varying,
-	OUT postcode character varying,
-	OUT woonplaats character varying,
-	OUT postbus character varying,
-	OUT provincie text,
-	OUT land text,
-	OUT email character varying,
-	OUT telefoonnr character varying,
-	OUT gsm character varying,
-	OUT membership_state character varying,
-	OUT Afdeling character varying
-	)
+CREATE OR REPLACE FUNCTION public._crm_partnerinfo(
+    OUT partner_id integer,
+    OUT lidnummer character varying,
+    OUT geslacht character varying,
+    OUT voornaam character varying,
+    OUT achternaam character varying,
+    OUT voornaam_lidkaart character varying,
+    OUT achternaam_lidkaart character varying,
+    OUT birthday date,
+    OUT leeftijd double precision,
+    OUT adres_id numeric,
+    OUT building character varying,
+    OUT straat character varying,
+    OUT huisnummer character varying,
+    OUT bus character varying,
+    OUT postcode character varying,
+    OUT woonplaats character varying,
+    OUT postbus character varying,
+    OUT provincie text,
+    OUT land text,
+    OUT email character varying,
+    OUT telefoonnr character varying,
+    OUT gsm character varying,
+    OUT membership_state character varying,
+    OUT afdeling character varying)
   RETURNS SETOF record AS
 $BODY$
 BEGIN
@@ -57,6 +44,12 @@ BEGIN
 		END achternaam_lidkaart,
 		p.birthday,
 		EXTRACT(YEAR from AGE(p.birthday)) leeftijd,
+		CASE
+			WHEN c.id = 21 AND p.crab_used = 'true' THEN
+				c.id + cc.id + ccs.id 
+					+ COALESCE(NULLIF(regexp_replace(p.street_nbr, '\D','','g'),'')::numeric,0) 
+					+ COALESCE(NULLIF(regexp_replace(p.street_bus, '\D','','g'),'')::numeric,0) 
+			ELSE p.id END adres_id,
 		p.street2 building,
 		CASE
 			WHEN c.id = 21 AND p.crab_used = 'true' THEN ccs.name
@@ -125,7 +118,7 @@ $BODY$
   LANGUAGE plpgsql VOLATILE
   COST 100
   ROWS 1000;
-ALTER FUNCTION _crm_partnerinfo()
-    OWNER TO axelvandencamp;
+ALTER FUNCTION public._crm_partnerinfo()
+  OWNER TO axelvandencamp;
 GRANT EXECUTE ON FUNCTION public._crm_partnerinfo() TO public;
 GRANT EXECUTE ON FUNCTION public._crm_partnerinfo() TO axelvandencamp;
